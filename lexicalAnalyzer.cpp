@@ -149,6 +149,7 @@ int lexAnalyze(FILE* fp){
                 retract(fp);
                 formatOutput(res,17);
             }
+            break;
         case ':':
             arr += ch;
             if((ch = fgetc(fp)) == '='){
@@ -158,6 +159,7 @@ int lexAnalyze(FILE* fp){
                 retract(fp);
                 error(ERROR_OPERATOR,line,err);
             }
+            break;
         case ';':
             arr += ch;
             formatOutput(res,23);
@@ -184,6 +186,7 @@ int lexAnalyze(FILE* fp){
             break;
 		default:
 			error(ILLEGAL_CHAR,line,err);
+            break;
 		}
 	}
 	formatOutput(res,25);
