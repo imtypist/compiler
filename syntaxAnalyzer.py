@@ -1,238 +1,132 @@
 # -*- coding:utf8 -*-
-
-MAX_COUNT = 1024
-
-
-def struct(*name):
-    """ 装饰器函数
-        用途：用于在类定义中，自动设置self.value = value
-    """
-    def decorator(func):
-        def wrapper(*args, **kw):
-            for i in range(len(name)):
-                setattr(args[0], name[i], args[i+1])
-            return func(*args, **kw)
-        return wrapper
-    return decorator
+import globalVar as g
 
 
-# 记录变量信息
-class varRecord(object):
-	""" 
-		vkind(0-变量 1-形参)
-		vlev(变量层次)
-		vadr(相对位置) 
-	"""
-	@struct('vname','vproc','vkind','vtype','vlev','vadr')
-	def __init__(self, *all_value):
-		pass
-
-
-# 记录过程信息
-class proRecord(object):
-	"""
-		fadr(第一个变量在变量表中的位置)
-		ladr(最后一个变量在变量表中的位置)
-		parameter(当前函数变量的位置)
-	"""
-	@struct('pname','ptype','plev','varNum','fadr','ladr','parameter','parameterIsDefined')
-	def __init__(self, *all_value):
-		pass
-
-
-global inFile,outFile,errFile,varFile,proFile
-global Input,kind,pToken,pChar,lineNum,varCount,proCount
-global var
-global pro
-global currentVar
-global currentPro
-inFile = None # 输入文件句柄
-outFile = None # 输出文件句柄
-errFile = None # 错误文件句柄
-varFile = None # 变量文件句柄
-proFile = None # 过程文件句柄
-Input = [] # 输入文件每一行的符号，标识符等
-kind = [] # 每一行的数字，即符号类别
-pToken = 0 # 指向当前输入符号
-pChar = 0 # 指向当前输入符号中的当前字符
-lineNum = 1 # 当前行号
-varCount = 0
-proCount = 0
-var = [0 for i in xrange(MAX_COUNT)] # 存放变量名表项数组
-pro = [0 for i in xrange(MAX_COUNT)] # 存放过程名表项数组
-currentVar = None # 存放当前变量的信息, class varRecord
-currentPro = proRecord("","",0,0,0,0,-1,0) # 存放当前过程的信息，class proRecord
-
-
-# 初始化处理 kind,Input
+# 初始化处理 kind,inputChar
 def init():
-	global inFile,outFile,errFile,varFile,proFile
-	global kind,Input
-	inFilename = "d:/test.dyd"
-	outFilename = "d:/test.dys"
-	errFilename = "d:/test.err"
-	varFilename = "d:/test.var"
-	proFilename = "d:/test.pro"
-	inFile = open(inFilename,'r')
-	outFile = open(outFilename,'w')
-	errFile = open(errFilename,'w')
-	varFile = open(varFilename,'w')
-	proFile = open(proFilename,'w')
-	for line in inFile.readlines():
+	inFilename = "./syntaxInput/test.dyd"
+	outFilename = "./syntaxOutput/test.dys"
+	errFilename = "./syntaxOutput/test.err"
+	varFilename = "./syntaxOutput/test.var"
+	proFilename = "./syntaxOutput/test.pro"
+	g.inFile = open(inFilename,'r')
+	g.outFile = open(outFilename,'w')
+	g.errFile = open(errFilename,'w')
+	g.varFile = open(varFilename,'w')
+	g.proFile = open(proFilename,'w')
+	for line in g.inFile.readlines():
 		divide = line.strip().replace("  "," ").split(' ')
-		kind.append(divide[1])
-		Input.append(divide[0])
-	A()
+		g.kind.append(divide[1])
+		g.inputChar.append(divide[0])
+		g.inputCount += 1
+
+
+def final():
+	for i in xrange(g.varCount):
+		if g.var[i].vkind:
+			vkind = 1
+		else:
+			vkind = 0
+		vtype = ""
+		if g.var[i].vtype == "integer":
+			vtype = "integer"
+		formater = "%16s %16s %d %s %d %d\n" % (g.var[i].vname, g.var[i].vproc, vkind, vtype, g.var[i].vlev, g.var[i].vadr)
+		g.varFile.write(formater)
+	for i in xrange(g.proCount):
+		ptype = ""
+		if g.pro[i].ptype == "integer":
+			ptype = "integer"
+		formater = "%16s %s %d %d %d\n" % (g.pro[i].pname, ptype, g.pro[i].plev, g.pro[i].fadr, g.pro[i].ladr)
+		g.proFile.write(formater)
+	g.inFile.seek(0,0)
+	for line in g.inFile.readlines():
+		g.outFile.write(line)
+	g.inFile.close()
+	g.outFile.close()
+	g.errFile.close()
+	g.varFile.close()
+	g.proFile.close()
+
+
+def error(errNum,symbol = None):
+	if errNum == 1:
+		g.errFile.write("***LINE:" + str(g.lineNum) + "  " + g.inputChar[g.pToken] + "符号无定义\n")
+	elif errNum == 2:
+		g.errFile.write("***LINE:" + str(g.lineNum) + "  " + g.inputChar[g.pToken] + "符号重定义\n")
+	elif errNum == 3:
+		g.errFile.write("***LINE:" + str(g.lineNum) + "  " + g.inputChar[g.pToken] + "处不能匹配执行语句\n")
+	elif errNum == 4:
+		g.errFile.write("***LINE:" + str(g.lineNum) + "  " + g.inputChar[g.pToken] + "处缺少" + symbol + "\n")
+	elif errNum == 5:
+		g.errFile.write("***LINE:" + str(g.lineNum) + "  缺少形参" + g.inputChar[g.pToken] + "的声明\n")
 
 
 def nextToken():
-	global pToken,Input,lineNum
-	pToken += 1
-	if Input[pToken] == "EOF":
+	g.pToken += 1
+	if g.inputChar[g.pToken] == "EOF":
 		return True
-	while Input[pToken] == "EOLN":
-		pToken += 1
-		lineNum += 1
+	while g.inputChar[g.pToken] == "EOLN":
+		g.pToken += 1
+		g.lineNum += 1
 	return False
 
 
-def judgeSt(string,array,stnum,hasVal):
-	global pToken,Input,kind
-	if Input[pToken] == string:
+def isVarExist(vname,vpro,vkind):
+	for i in xrange(g.varCount):
+		if (g.var[i].vname == vname) and (g.var[i].vproc == vpro) and (vkind == g.var[i].vkind):
+			return True
+	for j in xrange(g.proCount):
+		if g.pro[j].pname == vname:
+			return True
+	return False
+
+
+def isProExist(vname):
+	for i in xrange(g.varCount):
+		if g.var[j].vname == vname:
+			return True
+	for j in xrange(g.proCount):
+		if g.pro[i].pname == vname:
+			return True
+	return False
+
+
+def getNextToken():
+	tnext = pToken + 1
+	while g.inputChar[tnext] == "EOLN":
+		tnext += 1
+	return tnext
+
+
+def judgeSt(string,array,hasVal):
+	if g.inputChar[g.pToken] == string:
 		nextToken()
 	else:
-		error(4,string)
+		error(4,string) # NO_SIGN_ERR
 		flag = 0
-		for i in xrange(stnum):
-			if Input[pToken] == array[i]:
+		for el in array:
+			if g.inputChar[g.pToken] == el:
 				flag = 1
 		if hasVal is True:
-			if kind[pToken] == 10:
+			if g.kind[g.pToken] == 10:
 				flag = 1
 		if flag == 0:
 			nextToken()
 
 
-def getNextToken():
-	global pToken
-	tnext = pToken + 1
-	while Input[tnext] == "EOLN":
-		tnext += 1
-	return tnext
-
-
-def isVarExist(vnam,vpro,vkind):
-	global varCount,var,proCount,pro
-	for i in xrange(varCount):
-		if var[i].vname == vnam and var[i].vproc == vpro and vkind == var[i].vkind:
-			return True
-	for j in xrange(proCount):
-		if pro[j].pname == vnam:
-			return True
-	return False
-
-
-def isProExist(pnam):
-	global varCount,var,pro,proCount
-	for i in xrange(varCount):
-		if var[j].vname == pnam:
-			return True
-	for j in xrange(proCount):
-		if pro[i].pname == pnam:
-			return True
-	return False
-
-
-def error(errNum,symbol = None):
-	global errFile,lineNum,Input,pToken
-	if errNum == 1:
-		errFile.write("***LINE:" + str(lineNum) + "  " + Input[pToken] + "标记符未定义\n")
-	elif errNum == 2:
-		errFile.write("***LINE:" + str(lineNum) + "  " + Input[pToken] + "标记符重定义\n")
-	elif errNum == 3:
-		errFile.write("***LINE:" + str(lineNum) + "  " + Input[pToken] + "执行语句不能识别\n")
-	elif errNum == 4:
-		errFile.write("***LINE:" + str(lineNum) + "  " + Input[pToken] + "缺少符号" + symbol + "\n")
-	elif errNum == 5:
-		errFile.write("***LINE:" + str(lineNum) + "  函数参数" + Input[pToken] + "未定义\n")
-
-
-def final():
-	global inFile,outFile,errFile,varFile,proFile
-	global varCount,var,pro,proCount
-	for i in xrange(varCount):
-		if var[i].vkind:
-			kind = 1
-		else:
-			kind = 0
-		vtype = " "
-		if var[i].vtype == "integer":
-			vtype = "integer"
-		formater = "%16s %16s %d %s %d %d\n" % (var[i].vname, var[i].vproc, kind, vtype, var[i].vlev, var[i].vadr)
-		varFile.write(formater)
-	for i in xrange(proCount):
-		ptype = " "
-		if pro[i].ptype == "integer":
-			ptype = "integer"
-		formater = "%16s %s %d %d %d\n" % (pro[i].pname, ptype, pro[i].plev, pro[i].fadr, pro[i].ladr)
-		proFile.write(formater)
-	inFile.seek(0,0)
-	for line in inFile.readlines():
-		outFile.write(line)
-	inFile.close()
-	outFile.close()
-	errFile.close()
-	varFile.close()
-	proFile.close()
-
-
-# A：程序			A->B
-# B：分程序			B->begin C;M end
-# C：说明与句表		C->DC'
-# C'->;DC'|ε
-# D：说明语句		D->E|J
-# E：变量说明		E->integer F
-# F：变量			F->G
-# G：标识符			G->HG'
-# G'->HG'|IG'|ε
-# H：字母			H->a|...|z|A|...|Z
-# I：数字			I->0|1|...|9
-# J：函数说明		J->integer function G(K);L
-# K：参数			K->F
-# L：函数体			L->begin C;M end
-# M：执行语句表		M->NM'
-# M'->;NM'|ε
-# N：执行语句		N->O|P|Q|W
-# O：读语句			O->read(F)
-# P：写语句			P->write(F)
-# Q：赋值语句		Q->F:=R
-# R：算术表达式		R->SR'
-# R'->-SR'|ε
-# S：项				S->TS'
-# S'->*TS'|ε
-# T：因子			T->F|U|Z
-# U：常数			U->V
-# V：无符号整数		V->IV'
-# V'->IV'|ε
-# W：条件语句		W->if X then N else N
-# X：条件表达式		X->RYR
-# Y：关系运算符		Y-><|<=|>|>=|=|<>
-# Z：函数调用		Z->G(R)
 def A():
 	B()
-	final()
 
 
 def B():
-	global Input,pToken
-	judgeSt("begin","integer",1,False)
+	judgeSt("begin",["integer"],False)
 	C()
-	judgeSt(";",["if","read","write"],3,True)
+	judgeSt(";",["integer","read","write"],True)
 	M()
-	if Input[pToken] == "end":
+	if g.inputChar[g.pToken] == "end":
 		nextToken()
 	else:
-		error(4,"end")
+		error(4,"end") # NO_SIGN_ERR
 
 
 def C():
@@ -241,47 +135,44 @@ def C():
 
 
 def C_():
-	global Input,pToken
-	if Input[pToken] == ";" and Input[getNextToken()] == "integer":
+	if (g.inputChar[g.pToken] == ";") and (g.inputChar[getNextToken()] == "integer"):
 		nextToken()
 		D()
 		C_()
 	else:
-		if Input[pToken] == "integer":
-			error(4,";")
+		if g.inputChar[g.pToken] == "integer":
+			error(4,";") # NO_SIGN_ERR
 			D()
 			C_()
 
 
 def D():
-	global Input,pToken
-	if Input[pToken+1] == "function":
+	if g.inputChar[g.pToken+1] == "function":
 		J()
 	else:
 		E()
 
 
 def E():
-	global varCount,Input,pToken,currentVar,currentPro,varCount,var
-	if Input[pToken] == "integer":
+	if g.inputChar[g.pToken] == "integer":
 		nextToken()
 	else:
 		error(4,"integer")
 		nextToken()
-	currentVar = varRecord(Input[pToken],currentPro.pname,True,"integer",currentPro.plev,varCount)
-	if Input[pToken] == Input[currentPro.parameter]:
-		currentPro.parameterIsDefined = True
+	g.currentVar = g.varRecord(g.inputChar[g.pToken],g.currentPro.pname,True,"integer",g.currentPro.plev,g.varCount)
+	if g.inputChar[g.pToken] == g.inputChar[g.currentPro.parameter]:
+		g.currentPro.parameterIsDefined = True
 	else:
-		currentVar.vkind = False
-	if isVarExist(Input[pToken],currentPro.pname,currentVar.vkind) is True:
-		error(2)
+		g.currentVar.vkind = False
+	if isVarExist(g.inputChar[g.pToken],g.currentPro.pname,g.currentVar.vkind) is True:
+		error(2) # SIGN_REDEFINED_ERR
 	else:
-		if currentPro.varNum == 0:
-			currentPro.fadr = currentVar.vadr
-		currentPro.ladr = currentVar.vadr
-		currentPro.varNum += 1
-		var[varCount] = currentVar
-		varCount += 1
+		if g.currentPro.varNum == 0:
+			g.currentPro.fadr = g.currentVar.vadr
+		g.currentPro.ladr = g.currentVar.vadr
+		g.currentPro.varNum += 1
+		g.var.append(g.currentVar);
+		g.varCount += 1
 	F()
 
 
@@ -290,27 +181,25 @@ def F():
 
 
 def G():
-	global kind,pToken
-	if kind[pToken] == 10:
+	if g.kind[g.pToken] == 10:
 		nextToken()
 
 
 def J():
-	global Input,pToken,currentPro
-	backup = currentPro
-	judgeSt("integer","function",1,False)
-	judgeSt("function"," ",0,True)
-	currentPro = proRecord(Input[pToken],"integer",backup.plev + 1,0,backup.fadr,backup.ladr,backup.parameter,False)
-	if isProExist(currentPro.pname) is True:
+	backup = g.currentPro
+	judgeSt("integer",["function"],False)
+	judgeSt("function",[],True)
+	g.currentPro = g.proRecord(g.inputChar[g.pToken],"integer",backup.plev + 1,0,backup.fadr,backup.ladr,backup.parameter,False)
+	if isProExist(g.inputChar[g.pToken]) is True:
 		error(2)
 	G()
-	judgeSt("("," ",0,True)
-	currentPro.parameter = pToken
+	judgeSt("(",[],True)
+	g.currentPro.parameter = g.pToken
 	K()
-	judgeSt(")"," ",0,True)
-	judgeSt(";","begin",1,False)
+	judgeSt(")",[";"],False)
+	judgeSt(";",["begin"],False)
 	L()
-	currentPro = backup
+	g.currentPro = backup
 
 
 def K():
@@ -318,16 +207,15 @@ def K():
 
 
 def L():
-	global pro,proCount,currentPro
-	judgeSt("begin","integer",1,False)
+	judgeSt("begin",["integer"],False)
 	C()
-	if currentPro.parameterIsDefined is False:
-		error(5,Input[currentPro.parameter])
-	pro[proCount] = currentPro
-	proCount += 1
-	judgeSt(";",["if","read","write"],3,True)
+	if g.currentPro.parameterIsDefined is False:
+		error(5,g.inputChar[g.currentPro.parameter]) # NO_PARA_ERR
+	g.pro.append(g.currentPro)
+	g.proCount += 1
+	judgeSt(";",["integer","read","write"],True)
 	M()
-	judgeSt("end",[";","end"],2,False)
+	judgeSt("end",[";","end"],False)
 
 
 def M():
@@ -336,63 +224,58 @@ def M():
 
 
 def M_():
-	global Input,pToken
-	if Input[pToken] == ";":
+	if g.inputChar[g.pToken] == ";":
 		nextToken()
 		N()
 		M_()
 	else:
-		if Input[pToken] != "end" and Input[pToken] != "EOF":
-			error(4,";")
+		if (g.inputChar[g.pToken] != "end") and (g.inputChar[g.pToken] != "EOF"):
+			error(4,";") # NO_SIGN_ERR
 			N()
 			M_()
 
 
 def N():
-	global Input,pToken
-	if Input[pToken] == "read":
+	if g.inputChar[g.pToken] == "read":
 		O()
-	elif Input[pToken] == "write":
+	elif g.inputChar[g.pToken] == "write":
 		P()
-	elif kind[pToken] == 10:
+	elif g.kind[g.pToken] == 10:
 		Q()
-	elif Input[pToken] == "if":
+	elif g.inputChar[g.pToken] == "if":
 		W()
 	else:
-		error(3)
+		error(3) #SIGN_EXECUTE_ERR
 		nextToken()
 
 
 def O():
-	global Input,pToken,currentPro
-	judgeSt("read","(",1,False)
-	judgeSt("("," ",0,True)
-	if isVarExist(Input[pToken],currentPro.pname,False) is False and isVarExist(Input[pToken],currentPro.pname,True) is False:
-		error(1)
+	judgeSt("read",["("],False)
+	judgeSt("(",[],True)
+	if (isVarExist(g.inputChar[g.pToken],g.currentPro.pname,False) is False) and (isVarExist(g.inputChar[g.pToken],g.currentPro.pname,True) is False):
+		error(1) #SIGN_UNDEFINED_ERR
 	F()
-	judgeSt(")",[";","end"],2,False)
+	judgeSt(")",[";","end"],False)
 
 
 def P():
-	global Input,pToken,currentPro
-	judgeSt("write","(",1,False)
-	judgeSt("("," ",0,True)
-	if isVarExist(Input[pToken],currentPro.pname,False) is False and isVarExist(Input[pToken],currentPro.pname,True) is False:
-		error(1)
+	judgeSt("write",["("],False)
+	judgeSt("(",[],True)
+	if (isVarExist(g.inputChar[g.pToken],g.currentPro.pname,False) is False) and (isVarExist(g.inputChar[g.pToken],g.currentPro.pname,True) is False):
+		error(1)#SIGN_UNDEFINED_ERR
 	F()
-	judgeSt(")",[";","end"],2,False)
+	judgeSt(")",[";","end"],False)
 
 
 def Q():
-	global Input,pToken,currentPro,kind
-	if isVarExist(Input[pToken],currentPro.pname,False) is False and isVarExist(Input[pToken],currentPro.pname,True) is False and isProExist(Input[pToken]) is False:
+	if (isVarExist(g.inputChar[g.pToken],g.currentPro.pname,False) is False) and (isVarExist(g.inputChar[g.pToken],g.currentPro.pname,True) is False) and (isProExist(g.inputChar[g.pToken]) is False):
 		error(1)
 	F()
-	if Input[pToken] == ":=":
+	if g.inputChar[g.pToken] == ":=":
 		nextToken()
 	else:
 		error(4,":=")
-		if kind[pToken] != 10 and kind[pToken] != 11:
+		if (g.kind[g.pToken] != 10) and (g.kind[g.pToken] != 11):
 			nextToken()
 	R()
 
@@ -403,13 +286,12 @@ def R():
 
 
 def R_():
-	global Input,pToken,kind
-	if Input[pToken] == "-":
+	if g.inputChar[g.pToken] == "-":
 		nextToken()
 		S()
 		R_()
 	else:
-		if kind[pToken] == 10 or kind[pToken] == 11:
+		if (g.kind[g.pToken] == 10) or (g.kind[g.pToken] == 11):
 			S()
 			R_()
 
@@ -420,47 +302,43 @@ def S():
 
 
 def S_():
-	global Input,pToken,kind
-	if Input[pToken] == "*":
+	if g.inputChar[g.pToken] == "*":
 		nextToken()
 		T()
 		S_()
 	else:
-		if kind[pToken] == 10 or kind[pToken] == 11:
+		if (g.kind[g.pToken] == 10) or (g.kind[g.pToken] == 11):
 			T()
 			S_()
 
 
 def T():
-	global Input,pToken,kind,currentPro
-	if kind[pToken] == 11:
+	if g.kind[g.pToken] == 11: #常数
 		U()
-	elif Input[pToken+1] == "(":
+	elif g.inputChar[g.pToken+1] == "(":
 		Z()
 	else:
-		if isVarExist(Input[pToken],currentPro.pname,True) is False and isVarExist(Input[pToken],currentPro.pname,False) is False:
+		if (isVarExist(g.inputChar[g.pToken],g.currentPro.pname,True) is False) and (isVarExist(g.inputChar[g.pToken],g.currentPro.pname,False) is False):
 			error(1)
 		F()
 
 
 def U():
-	global kind,pToken
-	if kind[pToken] == 11:
+	if g.kind[g.pToken] == 11:
 		nextToken()
 
 
 def W():
-	global Input,pToken,kind
-	if Input[pToken] == "if":
+	if g.inputChar[g.pToken] == "if":
 		nextToken()
 	else:
 		error(4,"if")
-		if kind[pToken] != 11 and kine[pToken] != 10:
+		if (g.kind[g.pToken] != 11) and (g.kind[g.pToken] != 10):
 			nextToken()
 	X()
-	judgeSt("then",["if","read","write"],3,True)
+	judgeSt("then",["integer","read","write"],True)
 	N()
-	judgeSt("else",["if","read","write"],3,True)
+	judgeSt("else",["integer","read","write"],True)
 	N()
 
 
@@ -471,29 +349,29 @@ def X():
 
 
 def Y():
-	global Input,pToken,kind
-	if Input[pToken] == "<" or Input[pToken] == "<=" or Input[pToken] == ">" or Input[pToken] == ">=" or Input[pToken] == "=" or Input[pToken] == "<>":
+	if (g.inputChar[g.pToken] == "<") or (g.inputChar[g.pToken] == "<=") or (g.inputChar[g.pToken] == ">") or (g.inputChar[g.pToken] == ">=") or (g.inputChar[g.pToken] == "=") or (g.inputChar[g.pToken] == "<>"):
 		nextToken()
 	else:
 		error(4,"关系运算符")
-		if kind[pToken] != 11 and kind[pToken] != 10:
+		if (g.kind[g.pToken] != 11) and (g.kind[g.pToken] != 10):
 			nextToken()
 
 
 def Z():
-	global Input,pToken,kind
-	if isProExist(Input[pToken]) is False:
+	if isProExist(g.inputChar[g.pToken]) is False:
 		error(1)
 	G()
-	if Input[pToken] == "(":
+	if g.inputChar[g.pToken] == "(":
 		nextToken()
 	else:
 		error(4,"(")
-		if kind[pToken] != 10 and kind[pToken] != 11:
+		if (g.kind[g.pToken] != 10) and (g.kind[g.pToken] != 11):
 			nextToken()
 	R()
-	judgeSt(")",["-","*",";","end"],4,False)
+	judgeSt(")",["-","*",";","end"],False)
 
 
 if __name__ == '__main__':
 	init()
+	A()
+	final()
