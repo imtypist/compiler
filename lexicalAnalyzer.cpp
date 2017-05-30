@@ -18,87 +18,87 @@ void formatOutput(FILE* res,int code,string arr);
 void error(int code,int line,FILE* err);
 
 int main(){
-	FILE *fp = fopen("D:\\lex.pas","r");
-	if(fp == NULL) return 1;
-	lexAnalyze(fp);
-	fclose(fp);
-	return 0;
+    FILE *fp = fopen("D:\\lex.pas","r");
+    if(fp == NULL) return 1;
+    lexAnalyze(fp);
+    fclose(fp);
+    return 0;
 }
 
 int lexAnalyze(FILE* fp){
-	char ch;
-	FILE *res = fopen("D:\\result.dyd","w+");
-	if(res == NULL) return 1;
-	FILE *err = fopen("D:\\result.err","w+");
-	if(err == NULL) return 1;
-	int line = 0;
-	while((ch = fgetc(fp)) != EOF){
-        line++;
-		string arr = "";
-		if(ch == '\n'){
+    char ch;
+    FILE *res = fopen("D:\\result.dyd","w+");
+    if(res == NULL) return 1;
+    FILE *err = fopen("D:\\result.err","w+");
+    if(err == NULL) return 1;
+    int line = 1;
+    while((ch = fgetc(fp)) != EOF){
+        string arr = "";
+        if(ch == '\n'){
             formatOutput(res,24);
+            line++;
             continue;
-		}
-		if(getnbc(ch)) continue;
-		switch(ch){
-		case 'a':
-		case 'b':
-		case 'c':
-		case 'd':
-		case 'e':
-		case 'f':
-		case 'g':
-		case 'h':
-		case 'i':
-		case 'j':
-		case 'k':
-		case 'l':
-		case 'm':
-		case 'n':
-		case 'o':
-		case 'p':
-		case 'q':
-		case 'r':
-		case 's':
-		case 't':
-		case 'u':
-		case 'v':
-		case 'w':
-		case 'x':
-		case 'y':
-		case 'z':
+        }
+        if(getnbc(ch)) continue;
+        switch(ch){
+        case 'a':
+        case 'b':
+        case 'c':
+        case 'd':
+        case 'e':
+        case 'f':
+        case 'g':
+        case 'h':
+        case 'i':
+        case 'j':
+        case 'k':
+        case 'l':
+        case 'm':
+        case 'n':
+        case 'o':
+        case 'p':
+        case 'q':
+        case 'r':
+        case 's':
+        case 't':
+        case 'u':
+        case 'v':
+        case 'w':
+        case 'x':
+        case 'y':
+        case 'z':
         case 'A':
-		case 'B':
-		case 'C':
-		case 'D':
-		case 'E':
-		case 'F':
-		case 'G':
-		case 'H':
-		case 'I':
-		case 'J':
-		case 'K':
-		case 'L':
-		case 'M':
-		case 'N':
-		case 'O':
-		case 'P':
-		case 'Q':
-		case 'R':
-		case 'S':
-		case 'T':
-		case 'U':
-		case 'V':
-		case 'W':
-		case 'X':
-		case 'Y':
-		case 'Z':
-			while(isDigit(ch) || isLetter(ch)){
-				arr += ch;
-				if((ch = fgetc(fp)) == EOF)
-					break;
-			}
-			if(ch != EOF)
+        case 'B':
+        case 'C':
+        case 'D':
+        case 'E':
+        case 'F':
+        case 'G':
+        case 'H':
+        case 'I':
+        case 'J':
+        case 'K':
+        case 'L':
+        case 'M':
+        case 'N':
+        case 'O':
+        case 'P':
+        case 'Q':
+        case 'R':
+        case 'S':
+        case 'T':
+        case 'U':
+        case 'V':
+        case 'W':
+        case 'X':
+        case 'Y':
+        case 'Z':
+            while(isDigit(ch) || isLetter(ch)){
+                arr += ch;
+                if((ch = fgetc(fp)) == EOF)
+                    break;
+            }
+            if(ch != EOF)
                 retract(fp);
             int num;
             num = isKey(arr);
@@ -107,7 +107,7 @@ int lexAnalyze(FILE* fp){
             }else{
                 formatOutput(res,num+1);
             }
-			break;
+            break;
         case '0':
         case '1':
         case '2':
@@ -184,36 +184,36 @@ int lexAnalyze(FILE* fp){
             arr += ch;
             formatOutput(res,22);
             break;
-		default:
-			error(ILLEGAL_CHAR,line,err);
+        default:
+            error(ILLEGAL_CHAR,line,err);
             break;
-		}
-	}
-	formatOutput(res,25);
-	fclose(res);
-	fclose(err);
-	return 0;
+        }
+    }
+    formatOutput(res,25);
+    fclose(res);
+    fclose(err);
+    return 0;
 }
 
 int getnbc(char ch){
-	if(ch == ' ' || ch == '\t' || ch == '\r')
-		return 1;
-	else
-		return 0;
+    if(ch == ' ' || ch == '\t' || ch == '\r')
+        return 1;
+    else
+        return 0;
 }
 
 int isDigit(char ch){
-	if(ch >= '0' && ch <= '9')
-		return 1;
-	else
-		return 0;
+    if(ch >= '0' && ch <= '9')
+        return 1;
+    else
+        return 0;
 }
 
 int isLetter(char ch){
-	if((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z'))
-		return 1;
-	else
-		return 0;
+    if((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z'))
+        return 1;
+    else
+        return 0;
 }
 
 int isKey(string arr){
@@ -226,7 +226,7 @@ int isKey(string arr){
 }
 
 void retract(FILE* fp){
-	fseek(fp,-1L,SEEK_CUR);
+    fseek(fp,-1L,SEEK_CUR);
 }
 
 void formatOutput(FILE* res,int code){
@@ -290,7 +290,9 @@ void error(int code,int line,FILE* err){
     switch(code){
     case 0:
         fprintf(err,"***LINE:%d  illegal character\n",line);
+        break;
     case 1:
         fprintf(err,"***LINE:%d  operator ':' error\n",line);
+        break;
     }
 }
